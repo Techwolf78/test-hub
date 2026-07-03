@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   getUserTests,
+  getAllTests,
   deleteTest,
   publishTest,
   unpublishTest,
@@ -24,14 +25,21 @@ import {
   Delete,
   FileText,
   Mail,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
-export default function ViewTests() {
+export default function ViewTests({ mode = "user" }) {
   const [tests, setTests] = useState([]);
   const [selectedTest, setSelectedTest] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Advanced filters for superadmin
+  const [searchTerm, setSearchTerm] = useState("");
+  const [testStatusFilter, setTestStatusFilter] = useState("all");
+  const [testResponsesFilter, setTestResponsesFilter] = useState("all");
+  const [testSortBy, setTestSortBy] = useState("newest");
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updatingTest, setUpdatingTest] = useState(false);
   const [updatedTestData, setUpdatedTestData] = useState({
@@ -71,7 +79,12 @@ export default function ViewTests() {
 
   const loadTests = async () => {
     try {
-      const userTests = await getUserTests();
+      let userTests;
+      if (mode === "superadmin") {
+        userTests = await getAllTests();
+      } else {
+        userTests = await getUserTests();
+      }
       setTests(userTests);
     } catch (error) {
       console.error("Error loading tests:", error);
@@ -406,7 +419,7 @@ export default function ViewTests() {
 
         // Update selectedTest with fresh data
         if (selectedTest) {
-          const freshTests = await getUserTests(); // Or use the updated tests state
+          const freshTests = mode === "superadmin" ? await getAllTests() : await getUserTests();
           updatedTest = freshTests.find((t) => t.id === selectedTest.id);
           if (updatedTest) {
             setSelectedTest(updatedTest);
@@ -545,6 +558,29 @@ export default function ViewTests() {
     loadTests();
   };
 
+  const filteredTests = tests.filter((test) => {
+    const matchesSearch = !searchTerm || 
+                          test.testName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          test.id?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = testStatusFilter === "all" || test.status === testStatusFilter;
+    const matchesResponses = testResponsesFilter === "all" || 
+                             (testResponsesFilter === "has_responses" ? (test.totalResponses || 0) > 0 : (test.totalResponses || 0) === 0);
+    return matchesSearch && matchesStatus && matchesResponses;
+  }).sort((a, b) => {
+    if (testSortBy === "newest") {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+      return dateB - dateA;
+    } else if (testSortBy === "oldest") {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+      return dateA - dateB;
+    } else if (testSortBy === "most_responses") {
+      return (b.totalResponses || 0) - (a.totalResponses || 0);
+    }
+    return 0;
+  });
+
   if (loading) {
     return (
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-8xl mx-auto">
@@ -606,14 +642,61 @@ export default function ViewTests() {
             <div className="lg:col-span-1">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">
-                  Your Tests
+                  {mode === "superadmin" ? "All Tests" : "Your Tests"}
                 </h3>
                 <span className="text-sm text-gray-500">
-                  {tests.length} test{tests.length !== 1 ? "s" : ""}
+                  {mode === "superadmin" ? filteredTests.length : tests.length} test{tests.length !== 1 ? "s" : ""}
                 </span>
               </div>
+
+              {mode === "superadmin" && (
+                <div className="flex flex-col gap-2 mb-4">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search tests..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      value={testStatusFilter}
+                      onChange={(e) => setTestStatusFilter(e.target.value)}
+                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+
+                    <select
+                      value={testResponsesFilter}
+                      onChange={(e) => setTestResponsesFilter(e.target.value)}
+                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
+                    >
+                      <option value="all">All Resp</option>
+                      <option value="has_responses">Has Resp</option>
+                      <option value="no_responses">No Resp</option>
+                    </select>
+
+                    <select
+                      value={testSortBy}
+                      onChange={(e) => setTestSortBy(e.target.value)}
+                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="most_responses">Most Resp</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {tests.map((test) => (
+                {(mode === "superadmin" ? filteredTests : tests).map((test) => (
                   <div
                     key={test.id}
                     className={`p-4 border rounded-xl cursor-pointer transition-all ${
@@ -643,6 +726,12 @@ export default function ViewTests() {
                     <div className="text-xs text-gray-500">
                       Created: {formatDate(test.createdAt)}
                     </div>
+                    {mode === "superadmin" && (
+                      <div className="text-xs text-blue-600 mt-0.5 font-medium">
+                        By: {test.createdByEmail ? test.createdByEmail.split('@')[0] : "Unknown"} 
+                        <span className="text-gray-500 font-normal"> ({test.createdByEmail || "Unknown"})</span>
+                      </div>
+                    )}
                     {test.totalResponses > 0 && (
                       <div className="text-xs text-green-600 mt-1">
                         {test.totalResponses} response
@@ -1039,14 +1128,14 @@ export default function ViewTests() {
                               <div
                                 key={optIndex}
                                 className={`flex items-center space-x-2 p-2 rounded ${
-                                  optIndex === q.correctOption
+                                  ((q.correctOptions?.includes(optIndex) || optIndex == q.correctOption) && mode === "superadmin")
                                     ? "bg-green-50 border border-green-200"
                                     : "bg-gray-50"
                                 }`}
                               >
                                 <div
                                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                                    optIndex === q.correctOption
+                                    ((q.correctOptions?.includes(optIndex) || optIndex == q.correctOption) && mode === "superadmin")
                                       ? "bg-green-500 text-white"
                                       : "bg-gray-300 text-gray-600"
                                   }`}
@@ -1055,16 +1144,16 @@ export default function ViewTests() {
                                 </div>
                                 <span
                                   className={
-                                    optIndex === q.correctOption
+                                    ((q.correctOptions?.includes(optIndex) || optIndex == q.correctOption) && mode === "superadmin")
                                       ? "font-medium text-green-800"
                                       : "text-gray-600"
                                   }
                                 >
                                   {option}
                                 </span>
-                                {optIndex === q.correctOption && (
-                                  <span className="text-green-600 text-sm ml-auto">
-                                    ✓
+                                {(((q.correctOptions?.includes(optIndex) || optIndex == q.correctOption) && mode === "superadmin")) && (
+                                  <span className="text-green-600 text-sm ml-auto font-medium">
+                                    Ans ✓
                                   </span>
                                 )}
                               </div>

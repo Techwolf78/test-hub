@@ -578,3 +578,18 @@ export const clearTestResponses = async (testId) => {
     throw error;
   }
 };
+
+// Get all tests for superadmin
+export const getAllTests = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "tests"));
+    const tests = [];
+    querySnapshot.forEach((doc) => {
+      tests.push({ id: doc.id, ...doc.data() });
+    });
+    return tests;
+  } catch (error) {
+    console.error("Error getting all tests:", error);
+    throw error;
+  }
+};

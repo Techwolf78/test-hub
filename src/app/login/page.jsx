@@ -21,7 +21,8 @@ export default function LoginPage() {
           const snap = await getDoc(userRef);
           if (snap.exists()) {
             const { role } = snap.data();
-            if (role === "admin") router.replace("/admin");
+            if (role === "superadmin") router.replace("/superadmin");
+            else if (role === "admin") router.replace("/admin");
             else router.replace("/user");
           }
         } catch (err) {
@@ -52,7 +53,8 @@ export default function LoginPage() {
 
       if (snap.exists()) {
         const { role } = snap.data();
-        if (role === "admin") router.push("/admin");
+        if (role === "superadmin") router.push("/superadmin");
+        else if (role === "admin") router.push("/admin");
         else router.push("/user");
       } else {
         setError("No role found for this user!");
