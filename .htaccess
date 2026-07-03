@@ -1,0 +1,4 @@
+# Enable Phusion Passenger for Node.js routing on cPanel
+PassengerEnabled on
+PassengerAppType node
+PassengerStartupFile server.js
