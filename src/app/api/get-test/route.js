@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 
 export async function GET(request) {
@@ -12,20 +12,17 @@ export async function GET(request) {
       );
     }
 
-    // Use server-side Firestore query with shorter timeout
-    const testsRef = collection(db, "tests");
-    const q = query(testsRef, where("__name__", "==", testId));
-    
-    const snapshot = await getDocs(q);
+    const docRef = doc(db, "tests", testId);
+    const docSnap = await getDoc(docRef);
 
-    if (snapshot.empty) {
+    if (!docSnap.exists()) {
       return Response.json(
         { error: "Test not found" },
         { status: 404 }
       );
     }
 
-    const testData = snapshot.docs[0].data();
+    const testData = docSnap.data();
     
     // Check if test is active
     if (testData.status !== "active") {
@@ -47,7 +44,7 @@ export async function GET(request) {
     );
 
     return Response.json({
-      id: snapshot.docs[0].id,
+      id: docSnap.id,
       ...serialized,
     }, {
       headers: {

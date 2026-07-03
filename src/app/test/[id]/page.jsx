@@ -185,18 +185,25 @@ export default function Page() {
   }
 
   if (error) {
+    const isNotFound = error.includes("not found") || error.includes("check the test ID");
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg">
-          <h2 className="text-2xl font-semibold text-red-600 mb-4">⚠️ Connection Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-100 text-center">
+          <h2 className={`text-2xl font-bold mb-4 ${isNotFound ? 'text-gray-800' : 'text-red-600'}`}>
+            {isNotFound ? '🔍 Test Not Found' : '⚠️ Connection Error'}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {isNotFound 
+              ? 'This test link may have expired, or the test has been removed by the administrator. Please contact your instructor.'
+              : error}
+          </p>
           
-          {error.includes("timeout") && (
+          {!isNotFound && error.includes("timeout") && (
             <>
-              <p className="text-gray-600 mb-4 text-sm">
+              <p className="text-gray-600 mb-4 text-sm text-left">
                 This could be due to:
               </p>
-              <ul className="list-disc ml-6 mb-4 space-y-1 text-sm text-gray-600">
+              <ul className="list-disc ml-6 mb-4 space-y-1 text-sm text-gray-600 text-left">
                 <li>Slow internet connection</li>
                 <li>Server is temporarily busy</li>
                 <li>Browser cache issues</li>
@@ -205,41 +212,44 @@ export default function Page() {
           )}
           
           <div className="space-y-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Try Again
-            </button>
+            {!isNotFound && (
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md"
+              >
+                Try Again
+              </button>
+            )}
             
-            <button
-              onClick={async () => {
-                try {
-                  // Reset Firebase network connection
-                  await disableNetwork(db);
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  await enableNetwork(db);
-                } catch (e) {
-                  console.log('Network reset error:', e.message);
-                }
-                
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                try {
-                  await auth.signOut().catch(() => {});
-                } catch (e) {}
-                
-                window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') + 't=' + Date.now();
-              }}
-              className="w-full py-2 px-4 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
-            >
-              🔄 Reset & Retry
-            </button>
+            {!isNotFound && (
+              <button
+                onClick={async () => {
+                  try {
+                    await disableNetwork(db);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await enableNetwork(db);
+                  } catch (e) {
+                    console.log('Network reset error:', e.message);
+                  }
+                  
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  
+                  try {
+                    await auth.signOut().catch(() => {});
+                  } catch (e) {}
+                  
+                  window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') + 't=' + Date.now();
+                }}
+                className="w-full py-2.5 px-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors font-medium"
+              >
+                🔄 Reset & Retry
+              </button>
+            )}
             
             <button
               onClick={() => router.push('/user')}
-              className="w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              className="w-full py-2.5 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
             >
               Back to Dashboard
             </button>

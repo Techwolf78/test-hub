@@ -399,7 +399,13 @@ export default function ViewTests({ mode = "user" }) {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to publish test. Please try again.");
+      if (error.code === 'not-found' || error.message?.includes('not-found') || error.message?.includes('No document to update') || error.message?.includes('not found')) {
+        toast.error("This test was already deleted from the database.");
+        setTests((prev) => prev.filter((t) => t.id !== selectedTest.id));
+        setSelectedTest(null);
+      } else {
+        toast.error("Failed to publish test. Please try again.");
+      }
     }
   };
 
@@ -462,7 +468,13 @@ export default function ViewTests({ mode = "user" }) {
       toast.success("Test unpublished successfully.");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to unpublish test. Please try again.");
+      if (error.code === 'not-found' || error.message?.includes('not-found') || error.message?.includes('No document to update') || error.message?.includes('not found')) {
+        toast.error("This test was already deleted from the database.");
+        setTests((prev) => prev.filter((t) => t.id !== selectedTest.id));
+        setSelectedTest(null);
+      } else {
+        toast.error("Failed to unpublish test. Please try again.");
+      }
     }
   };
 
@@ -513,7 +525,14 @@ export default function ViewTests({ mode = "user" }) {
       setShowUpdateModal(false);
     } catch (error) {
       console.error("Error updating test via form:", error);
-      toast.error("Failed to update test. Please try again.");
+      if (error.code === 'not-found' || error.message?.includes('not-found') || error.message?.includes('No document to update') || error.message?.includes('not found')) {
+        toast.error("This test was already deleted from the database.");
+        setTests((prev) => prev.filter((t) => t.id !== selectedTest.id));
+        setSelectedTest(null);
+        setShowUpdateModal(false);
+      } else {
+        toast.error("Failed to update test. Please try again.");
+      }
     } finally {
       setUpdatingTest(false);
     }
@@ -890,7 +909,13 @@ export default function ViewTests({ mode = "user" }) {
                               toast.success('Responses and emails cleared for this test');
                             } catch (err) {
                               console.error('Failed to clear responses', err);
-                              toast.error('Failed to clear responses');
+                              if (err.code === 'not-found' || err.message?.includes('not-found') || err.message?.includes('No document to update') || err.message?.includes('not found')) {
+                                toast.error("This test was already deleted from the database.");
+                                setSelectedTest(null);
+                                setTests((prev) => prev.filter((t) => t.id !== selectedTest.id));
+                              } else {
+                                toast.error('Failed to clear responses');
+                              }
                             } finally {
                               setLoading(false);
                             }
