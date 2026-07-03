@@ -1,4 +1,14 @@
 import { MongoClient } from "mongodb";
+import dns from "dns";
+
+// Resolve querySrv ECONNREFUSED error on Windows / local router DNS configs
+if (dns && typeof dns.setServers === "function") {
+  try {
+    dns.setServers(["8.8.8.8", "8.8.4.4"]);
+  } catch (err) {
+    console.warn("Failed to set DNS servers:", err);
+  }
+}
 
 const uri = process.env.NEXT_PUBLIC_MONGODB_URI;
 const options = {
@@ -21,10 +31,11 @@ let clientPromise;
 
 if (!global._mongoClientPromise) {
   client = new MongoClient(uri, options);
-  global._mongoClientPromise = client.connect();
+  global._mongoClientPromise = client.connect().catch((err) => {
+    global._mongoClientPromise = null;
+    throw err;
+  });
 }
-clientPromise = global._mongoClientPromise;
-
 clientPromise = global._mongoClientPromise;
 
 export default clientPromise;

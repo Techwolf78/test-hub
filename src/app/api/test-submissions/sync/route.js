@@ -39,10 +39,17 @@ export async function POST() {
       // 3️⃣ Write to Firestore for each test (with chunked processing per test)
       const RESPONSES_PER_CHUNK = 200; // Split large response arrays further
       for (const [testId, responses] of Object.entries(grouped)) {
-        // Process responses in chunks to avoid Firestore document size limits
-        for (let i = 0; i < responses.length; i += RESPONSES_PER_CHUNK) {
-          const chunk = responses.slice(i, i + RESPONSES_PER_CHUNK);
-          await batchWriteResponses(testId, chunk);
+        try {
+          for (let i = 0; i < responses.length; i += RESPONSES_PER_CHUNK) {
+            const chunk = responses.slice(i, i + RESPONSES_PER_CHUNK);
+            await batchWriteResponses(testId, chunk);
+          }
+        } catch (err) {
+          if (err.message === "Test not found") {
+            console.warn(`Test ${testId} not found in Firestore. Submissions for this deleted test will be skipped and marked as synced to unblock the queue.`);
+          } else {
+            throw err;
+          }
         }
       }
 
