@@ -1,5 +1,19 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
+
+const TEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+const getTimestampMs = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value === "string" || typeof value === "number") {
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  return null;
+};
 
 export async function GET(request) {
   try {
@@ -28,6 +42,19 @@ export async function GET(request) {
     if (testData.status !== "active") {
       return Response.json(
         { error: "Test is not active" },
+        { status: 403 }
+      );
+    }
+
+    const publishedAtMs = getTimestampMs(testData.publishedAt) ?? getTimestampMs(testData.updatedAt);
+    if (publishedAtMs && Date.now() - publishedAtMs >= TEST_EXPIRY_MS) {
+      await updateDoc(docRef, {
+        status: "inactive",
+        updatedAt: serverTimestamp(),
+      });
+
+      return Response.json(
+        { error: "This test has expired" },
         { status: 403 }
       );
     }

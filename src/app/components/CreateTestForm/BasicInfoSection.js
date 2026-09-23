@@ -1,35 +1,61 @@
+import { useState } from "react";
+
 export default function BasicInfoSection({
   testName,
   setTestName,
   domain,
   setDomain,
+  college,
+  setCollege,
+  trainerName,
+  setTrainerName,
+  testNumber,
+  colleges,
+  setColleges,
   description,
   setDescription,
   domains,
   password,
   setPassword,
 }) {
+  const [showCollegeInput, setShowCollegeInput] = useState(false);
+  const [newCollege, setNewCollege] = useState("");
+
+  const addCollege = () => {
+    const trimmedName = newCollege.trim();
+    if (!trimmedName) return;
+
+    const nextColleges = colleges.includes(trimmedName)
+      ? colleges
+      : [...colleges, trimmedName];
+    setColleges(nextColleges);
+    setCollege(trimmedName);
+    setNewCollege("");
+    setShowCollegeInput(false);
+    localStorage.setItem("colleges", JSON.stringify(nextColleges));
+  };
+
   return (
     <div className="space-y-4">
-      {/* Compact header + single-line name */}
+      {/* Generated test name */}
       <div>
         <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
           <div className="w-2 h-2 bg-gradient-to-r from-[#1D4ED8] to-[#00BCD4] rounded-full" />
           <span className="sr-only">Test Name</span>
-          <span className="text-sm">Test Name *</span>
+          <span className="text-sm">Generated Test Name *</span>
         </label>
         <input
           type="text"
           value={testName}
-          onChange={(e) => setTestName(e.target.value)}
-          className="w-full border border-blue-100 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-[#00BCD4] focus:border-[#00BCD4] transition-colors bg-white placeholder-gray-400"
-          placeholder="Enter a descriptive test name..."
+          readOnly
+          className="w-full border border-blue-100 rounded-md px-3 py-2 text-sm bg-blue-50 text-gray-700 font-mono"
+          placeholder="Select a college, trainer, domain, and test number"
           required
         />
       </div>
 
-      {/* Dense grid: domain, password, short description */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+      {/* Test identity and access details */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-start">
         {/* Domain Selection */}
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -55,6 +81,102 @@ export default function BasicInfoSection({
               </svg>
             </div>
           </div>
+        </div>
+
+        {/* Trainer Name */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Trainer Name *
+          </label>
+          <input
+            type="text"
+            value={trainerName}
+            onChange={(e) => setTrainerName(e.target.value)}
+            className="w-full border border-blue-100 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-[#00BCD4] focus:border-[#00BCD4] bg-white"
+            placeholder="Enter trainer name"
+            required
+          />
+        </div>
+
+        {/* Test Number */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Test Number *
+          </label>
+          <input
+            type="text"
+            value={testNumber}
+            readOnly
+            className="w-full border border-blue-100 rounded-md px-3 py-2 text-sm bg-blue-50 text-gray-700"
+            placeholder="Select college and domain"
+            required
+          />
+        </div>
+
+        {/* College Selection */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold text-gray-700">
+              College
+            </label>
+            {!showCollegeInput && (
+              <button
+                type="button"
+                onClick={() => setShowCollegeInput(true)}
+                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+              >
+                Add College
+              </button>
+            )}
+          </div>
+          {showCollegeInput && (
+            <div className="mb-2 flex gap-2">
+              <input
+                type="text"
+                value={newCollege}
+                onChange={(e) => setNewCollege(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCollege();
+                  }
+                }}
+                placeholder="Enter college name"
+                autoFocus
+                className="min-w-0 flex-1 rounded-md border border-blue-200 px-3 py-2 text-sm focus:border-[#00BCD4] focus:ring-1 focus:ring-[#00BCD4]"
+              />
+              <button
+                type="button"
+                onClick={addCollege}
+                disabled={!newCollege.trim()}
+                className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewCollege("");
+                  setShowCollegeInput(false);
+                }}
+                className="rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          <select
+            value={college}
+            onChange={(e) => setCollege(e.target.value)}
+            className="w-full border border-blue-100 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-[#00BCD4] focus:border-[#00BCD4] bg-white cursor-pointer"
+          >
+            <option value="">Select a college...</option>
+            {colleges.map((collegeName) => (
+              <option key={collegeName} value={collegeName}>
+                {collegeName}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Password (compact) */}

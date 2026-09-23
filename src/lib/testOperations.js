@@ -245,6 +245,7 @@ export const publishTest = async (testId) => {
     const testRef = doc(db, "tests", testId);
     await updateDoc(testRef, {
       status: "active",
+      publishedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

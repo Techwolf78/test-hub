@@ -25,7 +25,6 @@ import {
   Delete,
   FileText,
   Mail,
-  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
@@ -35,8 +34,12 @@ export default function ViewTests({ mode = "user" }) {
   const [selectedTest, setSelectedTest] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Advanced filters for superadmin
-  const [searchTerm, setSearchTerm] = useState("");
+  // Test filters
+  const [testNameSearch, setTestNameSearch] = useState("");
+  const [collegeSearch, setCollegeSearch] = useState("");
+  const [domainSearch, setDomainSearch] = useState("");
+  const [trainerSearch, setTrainerSearch] = useState("");
+  const [testNumberSearch, setTestNumberSearch] = useState("");
   const [testStatusFilter, setTestStatusFilter] = useState("all");
   const [testResponsesFilter, setTestResponsesFilter] = useState("all");
   const [testSortBy, setTestSortBy] = useState("newest");
@@ -76,6 +79,16 @@ export default function ViewTests({ mode = "user" }) {
       });
     }
   }, [selectedTest, showUpdateModal]);
+
+  useEffect(() => {
+    const handleBrowserBack = () => {
+      const testId = new URLSearchParams(window.location.search).get("testId");
+      setSelectedTest(testId ? tests.find((test) => test.id === testId) || null : null);
+    };
+
+    window.addEventListener("popstate", handleBrowserBack);
+    return () => window.removeEventListener("popstate", handleBrowserBack);
+  }, [tests]);
 
   const loadTests = async () => {
     try {
@@ -577,14 +590,56 @@ export default function ViewTests({ mode = "user" }) {
     loadTests();
   };
 
+  const openTestDashboard = (test) => {
+    setSelectedTest(test);
+    const url = new URL(window.location.href);
+    url.searchParams.set("testId", test.id);
+    window.history.pushState({ testId: test.id }, "", url);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeTestDashboard = () => {
+    if (new URLSearchParams(window.location.search).has("testId")) {
+      window.history.back();
+    } else {
+      setSelectedTest(null);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getSearchOptions = (getValue) => [...new Set(
+    tests.map(getValue).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const domainLabels = {
+    aptitude: "Aptitude",
+    technical: "Technical",
+    "soft-skills": "Soft Skills",
+    "domain-knowledge": "Domain Knowledge",
+    behavioral: "Behavioral",
+    language: "Language",
+  };
+
+  const collegeSearchOptions = getSearchOptions((test) => String(test.collegeName || test.college || ""));
+  const domainSearchOptions = Object.keys(domainLabels);
+  const trainerSearchOptions = getSearchOptions((test) => String(test.trainerName || test.teacherName || test.createdByEmail || ""));
+  const testNumberSearchOptions = getSearchOptions((test) => String(test.testNumber || ""));
+
   const filteredTests = tests.filter((test) => {
-    const matchesSearch = !searchTerm || 
-                          test.testName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          test.id?.toLowerCase().includes(searchTerm.toLowerCase());
+    const testName = String(test.testName || "").toLowerCase();
+    const college = String(test.collegeName || test.college || "").toLowerCase();
+    const domain = String(test.domain || "").toLowerCase();
+    const trainer = String(test.trainerName || test.teacherName || test.createdByEmail || "").toLowerCase();
+    const testNumber = String(test.testNumber || "").toLowerCase();
+    const matchesTestName = !testNameSearch || testName.includes(testNameSearch.toLowerCase().trim());
+    const matchesCollege = !collegeSearch || college.includes(collegeSearch.toLowerCase().trim());
+    const matchesDomain = !domainSearch || domain.includes(domainSearch.toLowerCase().trim());
+    const matchesTrainer = !trainerSearch || trainer.includes(trainerSearch.toLowerCase().trim());
+    const matchesTestNumber = !testNumberSearch || testNumber.includes(testNumberSearch.toLowerCase().trim());
     const matchesStatus = testStatusFilter === "all" || test.status === testStatusFilter;
     const matchesResponses = testResponsesFilter === "all" || 
                              (testResponsesFilter === "has_responses" ? (test.totalResponses || 0) > 0 : (test.totalResponses || 0) === 0);
-    return matchesSearch && matchesStatus && matchesResponses;
+    return matchesTestName && matchesCollege && matchesDomain && matchesTrainer && matchesTestNumber && matchesStatus && matchesResponses;
   }).sort((a, b) => {
     if (testSortBy === "newest") {
       const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
@@ -596,6 +651,24 @@ export default function ViewTests({ mode = "user" }) {
       return dateA - dateB;
     } else if (testSortBy === "most_responses") {
       return (b.totalResponses || 0) - (a.totalResponses || 0);
+    } else if (testSortBy === "college_asc" || testSortBy === "college_desc") {
+      const getCollege = (test) => {
+        const fields = test.customFields || [];
+        const collegeField = fields.find((field) =>
+          /college|school|institution/i.test(field.name || "")
+        );
+        return String(
+          test.collegeName || test.college || collegeField?.value || ""
+        ).toLowerCase();
+      };
+      return testSortBy === "college_asc"
+        ? getCollege(a).localeCompare(getCollege(b))
+        : getCollege(b).localeCompare(getCollege(a));
+    } else if (testSortBy === "active_first" || testSortBy === "inactive_first") {
+      const activeFirst = testSortBy === "active_first";
+      return activeFirst
+        ? Number(b.status === "active") - Number(a.status === "active")
+        : Number(a.status === "active") - Number(b.status === "active");
     }
     return 0;
   });
@@ -656,30 +729,78 @@ export default function ViewTests({ mode = "user" }) {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Tests List */}
-            <div className="lg:col-span-1">
+            {!selectedTest && <div>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">
                   {mode === "superadmin" ? "All Tests" : "Your Tests"}
                 </h3>
                 <span className="text-sm text-gray-500">
-                  {mode === "superadmin" ? filteredTests.length : tests.length} test{tests.length !== 1 ? "s" : ""}
+                  {filteredTests.length} test{filteredTests.length !== 1 ? "s" : ""}
                 </span>
               </div>
 
-              {mode === "superadmin" && (
-                <div className="flex flex-col gap-2 mb-4">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <div className="flex flex-col gap-2 mb-4">
+                <input
+                  type="search"
+                  value={testNameSearch}
+                  onChange={(e) => setTestNameSearch(e.target.value)}
+                  placeholder="Search by test name..."
+                  aria-label="Search by test name"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <input
-                      type="text"
-                      placeholder="Search tests..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                      type="search"
+                      value={collegeSearch}
+                      onChange={(e) => setCollegeSearch(e.target.value)}
+                      placeholder="Search college..."
+                      aria-label="Search by college"
+                      list="college-search-options"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
                     />
-                  </div>
+                    <datalist id="college-search-options">
+                      {collegeSearchOptions.map((option) => <option key={option} value={option} />)}
+                    </datalist>
+                    <select
+                      value={domainSearch}
+                      onChange={(e) => setDomainSearch(e.target.value)}
+                      aria-label="Search by domain"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                    >
+                      <option value="">Select a domain...</option>
+                      {domainSearchOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {domainLabels[option] || option}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="search"
+                      value={trainerSearch}
+                      onChange={(e) => setTrainerSearch(e.target.value)}
+                      placeholder="Search trainer..."
+                      aria-label="Search by trainer"
+                      list="trainer-search-options"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                    />
+                    <datalist id="trainer-search-options">
+                      {trainerSearchOptions.map((option) => <option key={option} value={option} />)}
+                    </datalist>
+                    <input
+                      type="search"
+                      value={testNumberSearch}
+                      onChange={(e) => setTestNumberSearch(e.target.value)}
+                      placeholder="Search test number..."
+                      aria-label="Search by test number"
+                      list="test-number-search-options"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
+                    />
+                    <datalist id="test-number-search-options">
+                      {testNumberSearchOptions.map((option) => <option key={option} value={option} />)}
+                    </datalist>
+                </div>
                   <div className="grid grid-cols-3 gap-2">
                     <select
                       value={testStatusFilter}
@@ -709,13 +830,21 @@ export default function ViewTests({ mode = "user" }) {
                       <option value="newest">Newest</option>
                       <option value="oldest">Oldest</option>
                       <option value="most_responses">Most Resp</option>
+                      <option value="college_asc">College A-Z</option>
+                      <option value="college_desc">College Z-A</option>
+                      <option value="active_first">Active First</option>
+                      <option value="inactive_first">Inactive First</option>
                     </select>
-                  </div>
-                </div>
-              )}
+              </div>
+                    </div>
 
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {(mode === "superadmin" ? filteredTests : tests).map((test) => (
+              {filteredTests.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-10 text-center text-gray-500">
+                  No tests found matching your search or filters.
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 grid-rows-2 gap-4">
+                  {filteredTests.map((test) => (
                   <div
                     key={test.id}
                     className={`p-4 border rounded-xl cursor-pointer transition-all ${
@@ -723,7 +852,7 @@ export default function ViewTests({ mode = "user" }) {
                         ? "border-blue-500 bg-blue-50 shadow-md"
                         : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
-                    onClick={() => setSelectedTest(test)}
+                    onClick={() => openTestDashboard(test)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-semibold text-gray-800 line-clamp-2">
@@ -758,14 +887,23 @@ export default function ViewTests({ mode = "user" }) {
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              )}
+            </div>}
 
             {/* Test Details */}
-            <div className="lg:col-span-2">
+            <div>
               {selectedTest ? (
                 <div className="border border-gray-200 rounded-xl p-4">
+                  <button
+                    type="button"
+                    onClick={closeTestDashboard}
+                    className="mb-4 flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+                  >
+                    <X size={16} />
+                    <span>Back to Tests</span>
+                  </button>
                   <div className="flex flex-col py-2 gap-y-5">
                     <div className="flex justify-between items-start gap-2 text-sm">
                       <div className="flex-1">
