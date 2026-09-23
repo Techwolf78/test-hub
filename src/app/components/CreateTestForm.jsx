@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useState, useEffect, useRef } from "react";
+import { collection, addDoc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import { db, auth } from "../../lib/firebaseConfig";
 import toast from "react-hot-toast"; // ✅ Import toast
 
@@ -14,9 +14,15 @@ import TestSummary from "./CreateTestForm/TestSummary";
 import NavigationButtons from "./CreateTestForm/NavigationButtons";
 
 export default function CreateTestForm({ initialData = null, onSubmit, isSubmitting: externalIsSubmitting }) {
+  const legacyTestName = useRef(initialData?.testName || "");
+
   // Basic Info
   const [testName, setTestName] = useState(initialData?.testName || "");
   const [domain, setDomain] = useState(initialData?.domain || "");
+  const [college, setCollege] = useState(initialData?.college || "");
+  const [trainerName, setTrainerName] = useState(initialData?.trainerName || "");
+  const [testNumber, setTestNumber] = useState(initialData?.testNumber || "");
+  const [colleges, setColleges] = useState([]);
   const [description, setDescription] = useState(initialData?.description || "");
   const [password, setPassword] = useState(initialData?.password || "");
 
@@ -46,6 +52,58 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
     { value: "language", label: "Language" },
   ];
 
+  const formatNamePart = (value) =>
+    String(value || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+  useEffect(() => {
+    const generatedName = [college, trainerName, domain, testNumber]
+      .map(formatNamePart)
+      .filter(Boolean)
+      .join("_");
+    if (generatedName) {
+      setTestName(generatedName);
+    } else if (!legacyTestName.current) {
+      setTestName("");
+    }
+  }, [college, trainerName, domain, testNumber]);
+
+  useEffect(() => {
+    if (initialData || !college || !domain) return;
+
+    let cancelled = false;
+
+    const loadNextTestNumber = async () => {
+      try {
+        const testsSnapshot = await getDocs(
+          query(collection(db, "tests"), where("college", "==", college))
+        );
+
+        const matchingTests = testsSnapshot.docs.filter((testDoc) => {
+          const test = testDoc.data();
+          return test.domain === domain && testDoc.id !== initialData?.id;
+        });
+
+        const highestNumber = matchingTests.reduce((highest, testDoc) => {
+          const number = Number(testDoc.data().testNumber);
+          return Number.isFinite(number) ? Math.max(highest, number) : highest;
+        }, 0);
+
+        if (!cancelled) setTestNumber(String(highestNumber + 1));
+      } catch (error) {
+        console.error("Unable to calculate the next test number:", error);
+        if (!cancelled) setTestNumber("1");
+      }
+    };
+
+    loadNextTestNumber();
+    return () => {
+      cancelled = true;
+    };
+  }, [college, domain, initialData]);
+
   // Load initial data or saved data
   useEffect(() => {
     if (initialData) {
@@ -54,11 +112,19 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
       const savedTest = localStorage.getItem("createTest");
       const savedDetails = localStorage.getItem("testDetails");
       const savedQuestions = localStorage.getItem("questions");
+      const savedColleges = localStorage.getItem("colleges");
+
+      if (savedColleges) {
+        setColleges(JSON.parse(savedColleges));
+      }
 
       if (savedTest) {
         const testData = JSON.parse(savedTest);
         setTestName(testData.testName || "");
         setDomain(testData.domain || "");
+        setCollege(testData.college || "");
+        setTrainerName(testData.trainerName || "");
+        setTestNumber(testData.testNumber || "");
         setDescription(testData.description || "");
       }
 
@@ -182,6 +248,9 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
   const resetForm = () => {
     setTestName("");
     setDomain("");
+    setCollege("");
+    setTrainerName("");
+    setTestNumber("");
     setDescription("");
     setInstructions("");
     setCustomFields([]);
@@ -238,6 +307,9 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
       const testData = {
         testName,
         domain,
+        ...(college && { college }),
+        ...(trainerName && { trainerName }),
+        ...(testNumber && { testNumber: String(testNumber) }),
         ...(description && { description }),
         ...(instructions && { instructions }),
         ...(password && { password }),
@@ -374,6 +446,13 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
             setTestName={setTestName}
             domain={domain}
             setDomain={setDomain}
+            college={college}
+            setCollege={setCollege}
+            trainerName={trainerName}
+            setTrainerName={setTrainerName}
+            testNumber={testNumber}
+            colleges={colleges}
+            setColleges={setColleges}
             description={description}
             setDescription={setDescription}
             domains={domains}

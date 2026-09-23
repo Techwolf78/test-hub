@@ -1,40 +1,61 @@
 "use client";
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth, db } from "../../lib/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // ✅ Auto-redirect if already logged in
+  const getDestination = (role) => {
+    if (role === "superadmin") return "/superadmin";
+    if (role === "admin") return "/admin";
+    if (role === "user") return "/user";
+    return null;
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const userRef = doc(db, "users", user.uid);
-          const snap = await getDoc(userRef);
-          if (snap.exists()) {
-            const { role } = snap.data();
-            if (role === "superadmin") router.replace("/superadmin");
-            else if (role === "admin") router.replace("/admin");
-            else router.replace("/user");
-          }
-        } catch (err) {
-          console.error("Error fetching user role:", err);
+      if (!user || isLoading) return;
+
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const destination = snap.exists() ? getDestination(snap.data().role) : null;
+
+        if (destination) {
+          router.replace(destination);
+        } else {
+          await signOut(auth);
+          setError(
+            snap.exists()
+              ? "Your user profile has no valid role. Ask an administrator to set the role to user, admin, or superadmin."
+              : "No user profile was found for this account. Ask an administrator to create a users/{UID} Firestore document."
+          );
         }
+      } catch (err) {
+        console.error("Error loading user profile:", err);
+        setError(
+          err.code === "permission-denied"
+            ? "Firebase signed you in, but Firestore denied access to your user profile. Check Firestore rules."
+            : "Unable to load your user profile. Check your connection and Firebase configuration."
+        );
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, isLoading]);
 
-  // ✅ Login handler
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -43,7 +64,7 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        email.trim(),
         password
       );
       const user = userCredential.user;
@@ -52,15 +73,30 @@ export default function LoginPage() {
       const snap = await getDoc(userRef);
 
       if (snap.exists()) {
-        const { role } = snap.data();
-        if (role === "superadmin") router.push("/superadmin");
-        else if (role === "admin") router.push("/admin");
-        else router.push("/user");
+        const destination = getDestination(snap.data().role);
+        if (destination) {
+          router.replace(destination);
+        } else {
+          await signOut(auth);
+          setError("Your user profile has no valid role. Ask an administrator to set the role to user, admin, or superadmin.");
+        }
       } else {
-        setError("No role found for this user!");
+        await signOut(auth);
+        setError("No user profile was found for this account. Ask an administrator to create a users/{UID} Firestore document.");
       }
     } catch (err) {
-      setError("Invalid credentials or user not found!");
+      console.error("Login failed:", err);
+      const messages = {
+        "auth/invalid-credential": `Firebase rejected these credentials for project ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}. Confirm this account exists in Firebase Authentication for this project.`,
+        "auth/user-not-found": `No Firebase account exists for this email in project ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.`,
+        "auth/wrong-password": "The password does not match this Firebase account.",
+        "auth/operation-not-allowed": "Email/password sign-in is disabled in Firebase Authentication. Enable it in Sign-in providers.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/user-disabled": "This account has been disabled.",
+        "auth/too-many-requests": "Too many attempts. Wait and try again.",
+        "permission-denied": "Firebase signed you in, but Firestore denied access to your user profile.",
+      };
+      setError(messages[err.code] || `Unable to sign in (${err.code || "unknown error"}): ${err.message || "unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -106,15 +142,26 @@ export default function LoginPage() {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
-                required
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <button
