@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { DEFAULT_COLLEGES } from "@/constants/colleges";
 
 export default function ViewTests({ mode = "user" }) {
   const [tests, setTests] = useState([]);
@@ -620,10 +621,35 @@ export default function ViewTests({ mode = "user" }) {
     language: "Language",
   };
 
-  const collegeSearchOptions = getSearchOptions((test) => String(test.collegeName || test.college || ""));
+  const collegeSearchOptions = [...new Set([
+    ...tests.map((test) => String(test.collegeName || test.college || "")).filter(Boolean),
+    ...DEFAULT_COLLEGES,
+  ])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const domainSearchOptions = Object.keys(domainLabels);
   const trainerSearchOptions = getSearchOptions((test) => String(test.trainerName || test.teacherName || test.createdByEmail || ""));
   const testNumberSearchOptions = getSearchOptions((test) => String(test.testNumber || ""));
+
+  const hasActiveFilters = Boolean(
+    testNameSearch ||
+    collegeSearch ||
+    domainSearch ||
+    trainerSearch ||
+    testNumberSearch ||
+    testStatusFilter !== "all" ||
+    testResponsesFilter !== "all" ||
+    testSortBy !== "newest"
+  );
+
+  const resetAllFilters = () => {
+    setTestNameSearch("");
+    setCollegeSearch("");
+    setDomainSearch("");
+    setTrainerSearch("");
+    setTestNumberSearch("");
+    setTestStatusFilter("all");
+    setTestResponsesFilter("all");
+    setTestSortBy("newest");
+  };
 
   const filteredTests = tests.filter((test) => {
     const testName = String(test.testName || "").toLowerCase();
@@ -733,117 +759,271 @@ export default function ViewTests({ mode = "user" }) {
             {/* Tests List */}
             {!selectedTest && <div>
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {mode === "superadmin" ? "All Tests" : "Your Tests"}
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-gradient-to-r from-[#1D4ED8] to-[#00BCD4] rounded-full" />
+                  {mode === "superadmin" ? "All Tests Database" : "Your Tests"}
                 </h3>
-                <span className="text-sm text-gray-500">
-                  {filteredTests.length} test{filteredTests.length !== 1 ? "s" : ""}
+                <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/60">
+                  {filteredTests.length} of {tests.length} {tests.length === 1 ? "test" : "tests"}
                 </span>
               </div>
 
-              <div className="flex flex-col gap-2 mb-4">
-                <input
-                  type="search"
-                  value={testNameSearch}
-                  onChange={(e) => setTestNameSearch(e.target.value)}
-                  placeholder="Search by test name..."
-                  aria-label="Search by test name"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    <input
-                      type="search"
-                      value={collegeSearch}
-                      onChange={(e) => setCollegeSearch(e.target.value)}
-                      placeholder="Search college..."
-                      aria-label="Search by college"
-                      list="college-search-options"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
-                    />
-                    <datalist id="college-search-options">
-                      {collegeSearchOptions.map((option) => <option key={option} value={option} />)}
-                    </datalist>
-                    <select
-                      value={domainSearch}
-                      onChange={(e) => setDomainSearch(e.target.value)}
-                      aria-label="Search by domain"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
-                    >
-                      <option value="">Select a domain...</option>
-                      {domainSearchOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {domainLabels[option] || option}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="search"
-                      value={trainerSearch}
-                      onChange={(e) => setTrainerSearch(e.target.value)}
-                      placeholder="Search trainer..."
-                      aria-label="Search by trainer"
-                      list="trainer-search-options"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
-                    />
-                    <datalist id="trainer-search-options">
-                      {trainerSearchOptions.map((option) => <option key={option} value={option} />)}
-                    </datalist>
-                    <input
-                      type="search"
-                      value={testNumberSearch}
-                      onChange={(e) => setTestNumberSearch(e.target.value)}
-                      placeholder="Search test number..."
-                      aria-label="Search by test number"
-                      list="test-number-search-options"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-sm"
-                    />
-                    <datalist id="test-number-search-options">
-                      {testNumberSearchOptions.map((option) => <option key={option} value={option} />)}
-                    </datalist>
-                </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <select
-                      value={testStatusFilter}
-                      onChange={(e) => setTestStatusFilter(e.target.value)}
-                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-
-                    <select
-                      value={testResponsesFilter}
-                      onChange={(e) => setTestResponsesFilter(e.target.value)}
-                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
-                    >
-                      <option value="all">All Resp</option>
-                      <option value="has_responses">Has Resp</option>
-                      <option value="no_responses">No Resp</option>
-                    </select>
-
-                    <select
-                      value={testSortBy}
-                      onChange={(e) => setTestSortBy(e.target.value)}
-                      className="px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 text-xs"
-                    >
-                      <option value="newest">Newest</option>
-                      <option value="oldest">Oldest</option>
-                      <option value="most_responses">Most Resp</option>
-                      <option value="college_asc">College A-Z</option>
-                      <option value="college_desc">College Z-A</option>
-                      <option value="active_first">Active First</option>
-                      <option value="inactive_first">Inactive First</option>
-                    </select>
-              </div>
+              {/* Modern Squarish Search, Filter & Sort Panel */}
+              <div className="space-y-4 mb-6">
+                {/* 1. Quick Search Card */}
+                <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-cyan-50/60 border border-blue-100 rounded-xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-900">
+                      <div className="w-2.5 h-2.5 bg-gradient-to-r from-[#1D4ED8] to-[#00BCD4] rounded-full ring-2 ring-blue-200" />
+                      Search Tests
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={resetAllFilters}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 bg-white/90 hover:bg-white px-2.5 py-1 rounded-lg border border-rose-200 transition-all shadow-xs"
+                        >
+                          ✕ Reset Filters
+                        </button>
+                      )}
+                      <span className="text-xs text-blue-700 font-semibold bg-white/80 px-2.5 py-1 rounded-lg border border-blue-100">
+                        {filteredTests.length} {filteredTests.length === 1 ? "Test Found" : "Tests Found"}
+                      </span>
                     </div>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="search"
+                      value={testNameSearch}
+                      onChange={(e) => setTestNameSearch(e.target.value)}
+                      placeholder="Search tests by title or keyword..."
+                      aria-label="Search by test name"
+                      className="w-full h-11 border border-blue-200/70 rounded-lg pl-11 pr-4 text-sm bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] shadow-inner font-medium transition-all"
+                    />
+                    <div className="absolute left-3.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-blue-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Squarish Filter & Sort Card Tile Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {/* Test Domain */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🎯</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Domain
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Filter</span>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={domainSearch}
+                        onChange={(e) => setDomainSearch(e.target.value)}
+                        aria-label="Search by domain"
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 pr-9 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] appearance-none bg-slate-50/50 hover:bg-white cursor-pointer text-gray-800 transition-colors font-medium"
+                      >
+                        <option value="">All Domains</option>
+                        {domainSearchOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {domainLabels[option] || option}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* College */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🏫</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          College
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Search</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="search"
+                        value={collegeSearch}
+                        onChange={(e) => setCollegeSearch(e.target.value)}
+                        placeholder="Search college..."
+                        aria-label="Search by college"
+                        list="college-search-options"
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] bg-slate-50/50 hover:bg-white text-gray-800 transition-colors font-medium"
+                      />
+                      <datalist id="college-search-options">
+                        {collegeSearchOptions.map((option) => <option key={option} value={option} />)}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Trainer */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">👤</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Trainer
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Search</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="search"
+                        value={trainerSearch}
+                        onChange={(e) => setTrainerSearch(e.target.value)}
+                        placeholder="Search trainer..."
+                        aria-label="Search by trainer"
+                        list="trainer-search-options"
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] bg-slate-50/50 hover:bg-white text-gray-800 transition-colors font-medium"
+                      />
+                      <datalist id="trainer-search-options">
+                        {trainerSearchOptions.map((option) => <option key={option} value={option} />)}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Test Number */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🔢</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Test Number
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Search</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="search"
+                        value={testNumberSearch}
+                        onChange={(e) => setTestNumberSearch(e.target.value)}
+                        placeholder="Search number..."
+                        aria-label="Search by test number"
+                        list="test-number-search-options"
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] bg-slate-50/50 hover:bg-white text-gray-800 transition-colors font-medium"
+                      />
+                      <datalist id="test-number-search-options">
+                        {testNumberSearchOptions.map((option) => <option key={option} value={option} />)}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Test Status */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🚦</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Status
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Filter</span>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={testStatusFilter}
+                        onChange={(e) => setTestStatusFilter(e.target.value)}
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 pr-9 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] appearance-none bg-slate-50/50 hover:bg-white cursor-pointer text-gray-800 transition-colors font-medium"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Responses */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">📝</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Responses
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Filter</span>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={testResponsesFilter}
+                        onChange={(e) => setTestResponsesFilter(e.target.value)}
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 pr-9 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] appearance-none bg-slate-50/50 hover:bg-white cursor-pointer text-gray-800 transition-colors font-medium"
+                      >
+                        <option value="all">All Responses</option>
+                        <option value="has_responses">Has Responses</option>
+                        <option value="no_responses">No Responses</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sort By (Short) */}
+                  <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between sm:col-span-2 lg:col-span-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">⚡</span>
+                        <label className="text-xs font-bold text-gray-800">
+                          Sort Order
+                        </label>
+                      </div>
+                      <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Order By</span>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={testSortBy}
+                        onChange={(e) => setTestSortBy(e.target.value)}
+                        className="w-full h-11 border border-slate-200 rounded-lg px-3.5 pr-9 text-sm focus:ring-2 focus:ring-[#00BCD4]/30 focus:border-[#00BCD4] appearance-none bg-slate-50/50 hover:bg-white cursor-pointer text-gray-800 transition-colors font-medium"
+                      >
+                        <option value="newest">📅 Newest First</option>
+                        <option value="oldest">🕰️ Oldest First</option>
+                        <option value="most_responses">📊 Most Responses</option>
+                        <option value="college_asc">🏫 College (A-Z)</option>
+                        <option value="college_desc">🏫 College (Z-A)</option>
+                        <option value="active_first">🟢 Active Tests First</option>
+                        <option value="inactive_first">⚪ Inactive Tests First</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {filteredTests.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-10 text-center text-gray-500">
                   No tests found matching your search or filters.
                 </div>
               ) : (
-                <div className="grid grid-cols-4 grid-rows-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filteredTests.map((test) => (
                   <div
                     key={test.id}

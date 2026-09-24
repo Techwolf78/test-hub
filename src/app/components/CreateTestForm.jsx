@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { collection, addDoc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import { db, auth } from "../../lib/firebaseConfig";
 import toast from "react-hot-toast"; // ✅ Import toast
+import { DEFAULT_COLLEGES } from "@/constants/colleges";
 
 import BasicInfoSection from "./CreateTestForm/BasicInfoSection";
 import TestDetailsSection from "./CreateTestForm/TestDetailsSection";
@@ -22,7 +23,7 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
   const [college, setCollege] = useState(initialData?.college || "");
   const [trainerName, setTrainerName] = useState(initialData?.trainerName || "");
   const [testNumber, setTestNumber] = useState(initialData?.testNumber || "");
-  const [colleges, setColleges] = useState([]);
+  const [colleges, setColleges] = useState(DEFAULT_COLLEGES);
   const [description, setDescription] = useState(initialData?.description || "");
   const [password, setPassword] = useState(initialData?.password || "");
 
@@ -108,6 +109,22 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
   useEffect(() => {
     if (initialData) {
       setQuestions(initialData.questions || []);
+      const savedColleges = localStorage.getItem("colleges");
+      let initialColleges = DEFAULT_COLLEGES;
+      if (savedColleges) {
+        try {
+          const parsed = JSON.parse(savedColleges);
+          if (Array.isArray(parsed)) {
+            initialColleges = Array.from(new Set([...DEFAULT_COLLEGES, ...parsed]));
+          }
+        } catch (error) {
+          console.error("Failed to parse saved colleges:", error);
+        }
+      }
+      if (initialData.college && !initialColleges.includes(initialData.college)) {
+        initialColleges = [...initialColleges, initialData.college];
+      }
+      setColleges(initialColleges);
     } else {
       const savedTest = localStorage.getItem("createTest");
       const savedDetails = localStorage.getItem("testDetails");
@@ -115,7 +132,19 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
       const savedColleges = localStorage.getItem("colleges");
 
       if (savedColleges) {
-        setColleges(JSON.parse(savedColleges));
+        try {
+          const parsed = JSON.parse(savedColleges);
+          if (Array.isArray(parsed)) {
+            setColleges(Array.from(new Set([...DEFAULT_COLLEGES, ...parsed])));
+          } else {
+            setColleges(DEFAULT_COLLEGES);
+          }
+        } catch (error) {
+          console.error("Failed to parse saved colleges:", error);
+          setColleges(DEFAULT_COLLEGES);
+        }
+      } else {
+        setColleges(DEFAULT_COLLEGES);
       }
 
       if (savedTest) {
