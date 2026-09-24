@@ -1,28 +1,68 @@
 import { useEffect } from "react";
 
+export const DEFAULT_STUDENT_FIELDS = [
+  {
+    id: "default-name",
+    name: "Student Name",
+    type: "value",
+    required: true,
+    options: [],
+  },
+  {
+    id: "default-batch",
+    name: "Batch",
+    type: "value",
+    required: true,
+    options: [],
+  },
+  {
+    id: "default-email",
+    name: "Email",
+    type: "value",
+    required: true,
+    options: [],
+  },
+];
+
 export default function TestDetailsSection({
   instructions,
   setInstructions,
   customFields,
   setCustomFields,
 }) {
-  // Ensure "Email" field always exists
+  // Ensure "Student Name", "Batch", and "Email" fields always exist as defaults
   useEffect(() => {
-    const hasEmailField = customFields.some(
-      (field) => field.name.toLowerCase() === "email"
-    );
+    let updated = [...customFields];
+    let changed = false;
 
-    if (!hasEmailField) {
-      const emailField = {
-        id: "default-email",
-        name: "Email",
-        type: "value",
-        required: true,
-        options: [],
-      };
-      setCustomFields([emailField, ...customFields]);
+    // Check and add missing default fields
+    DEFAULT_STUDENT_FIELDS.forEach((def) => {
+      const exists = updated.some(
+        (f) =>
+          f.id === def.id ||
+          f.name?.toLowerCase().trim() === def.name.toLowerCase().trim()
+      );
+      if (!exists) {
+        updated.push(def);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setCustomFields(updated);
     }
   }, [customFields, setCustomFields]);
+
+  const isDefaultField = (field) => {
+    return (
+      field.id === "default-email" ||
+      field.id === "default-name" ||
+      field.id === "default-batch" ||
+      ["email", "student name", "batch"].includes(
+        field.name?.toLowerCase().trim()
+      )
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -40,92 +80,113 @@ export default function TestDetailsSection({
                 Student Registration Fields
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Define custom fields that students will fill out before starting the test
+                Define fields that students will fill out before starting the test (Student Name, Batch, and Email are default)
               </p>
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
-          {customFields.map((field, index) => (
-            <div
-              key={field.id}
-              className="border border-blue-100 rounded-lg p-3 bg-white hover:shadow-sm transition-all duration-150"
-            >
-              <div className="flex items-center gap-3 justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${
-                    field.id === "default-email" ? "bg-[#6BBF59]" : "bg-gradient-to-r from-[#1D4ED8] to-[#00BCD4]"
-                  }`} />
-                  <div className="text-sm font-semibold text-gray-800">
-                    {field.id === "default-email" ? "Email (Default)" : `Field ${index + 1}`}
+          {customFields.map((field, index) => {
+            const isDefault = isDefaultField(field);
+
+            return (
+              <div
+                key={field.id || `field-${index}`}
+                className="border border-blue-100 rounded-lg p-3 bg-white hover:shadow-sm transition-all duration-150"
+              >
+                <div className="flex items-center gap-3 justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        isDefault
+                          ? "bg-[#6BBF59]"
+                          : "bg-gradient-to-r from-[#1D4ED8] to-[#00BCD4]"
+                      }`}
+                    />
+                    <div className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <span>{field.name || `Field ${index + 1}`}</span>
+                      {isDefault && (
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {!isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedFields = customFields.filter(
+                            (_, i) => i !== index
+                          );
+                          setCustomFields(updatedFields);
+                        }}
+                        className="text-rose-600 hover:text-rose-800 text-sm font-medium px-2 py-1 rounded"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {(field.id !== "default-email" || customFields.length > 1) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updatedFields = customFields.filter((_, i) => i !== index);
-                        setCustomFields(updatedFields);
-                      }}
-                      className="text-rose-600 hover:text-rose-800 text-sm font-medium px-2 py-1 rounded"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 items-center">
-                <input
-                  type="text"
-                  value={field.name}
-                  onChange={(e) => {
-                    const updatedFields = [...customFields];
-                    updatedFields[index].name = e.target.value;
-                    setCustomFields(updatedFields);
-                  }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#00BCD4] transition-colors ${
-                    field.id === "default-email" ? "bg-gray-50 text-gray-600 cursor-not-allowed" : "bg-white"
-                  }`}
-                  placeholder="Field name"
-                  disabled={field.id === "default-email"}
-                />
-
-                <select
-                  value={field.type}
-                  onChange={(e) => {
-                    const updatedFields = [...customFields];
-                    updatedFields[index].type = e.target.value;
-                    if (e.target.value === "value") updatedFields[index].options = [];
-                    if (e.target.value === "dropdown" && !updatedFields[index].options) updatedFields[index].options = [""];
-                    setCustomFields(updatedFields);
-                  }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#00BCD4] transition-colors ${
-                    field.id === "default-email" ? "bg-gray-50 cursor-not-allowed" : "bg-white"
-                  }`}
-                  disabled={field.id === "default-email"}
-                >
-                  <option value="value">Text input</option>
-                  <option value="dropdown">Dropdown</option>
-                </select>
-
-                <label className="flex items-center gap-2 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 items-center">
                   <input
-                    type="checkbox"
-                    checked={field.required}
+                    type="text"
+                    value={field.name}
                     onChange={(e) => {
                       const updatedFields = [...customFields];
-                      updatedFields[index].required = e.target.checked;
+                      updatedFields[index].name = e.target.value;
                       setCustomFields(updatedFields);
                     }}
-                    className="w-4 h-4 text-[#6BBF59]"
+                    className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#00BCD4] transition-colors ${
+                      isDefault
+                        ? "bg-gray-50 text-gray-600 cursor-not-allowed"
+                        : "bg-white"
+                    }`}
+                    placeholder="Field name"
+                    disabled={isDefault}
                   />
-                  <span>Required</span>
-                </label>
-              </div>
+
+                  <select
+                    value={field.type}
+                    onChange={(e) => {
+                      const updatedFields = [...customFields];
+                      updatedFields[index].type = e.target.value;
+                      if (e.target.value === "value")
+                        updatedFields[index].options = [];
+                      if (
+                        e.target.value === "dropdown" &&
+                        !updatedFields[index].options
+                      )
+                        updatedFields[index].options = [""];
+                      setCustomFields(updatedFields);
+                    }}
+                    className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#00BCD4] transition-colors ${
+                      isDefault ? "bg-gray-50 cursor-not-allowed" : "bg-white"
+                    }`}
+                    disabled={isDefault}
+                  >
+                    <option value="value">Text input</option>
+                    <option value="dropdown">Dropdown</option>
+                  </select>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={field.required}
+                      onChange={(e) => {
+                        const updatedFields = [...customFields];
+                        updatedFields[index].required = e.target.checked;
+                        setCustomFields(updatedFields);
+                      }}
+                      className="w-4 h-4 text-[#6BBF59]"
+                    />
+                    <span>Required</span>
+                  </label>
+                </div>
 
               {field.type === "dropdown" && (
                 <div className="mt-3">
@@ -171,7 +232,8 @@ export default function TestDetailsSection({
                 </div>
               )}
             </div>
-          ))}
+          );
+        })}
 
           {/* Compact Add Custom Field Button */}
           <div className="pt-2">

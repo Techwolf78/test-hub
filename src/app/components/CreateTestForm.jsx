@@ -29,7 +29,33 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
 
   // Test Details
   const [instructions, setInstructions] = useState(initialData?.instructions || "");
-  const [customFields, setCustomFields] = useState(initialData?.customFields || []);
+  const [customFields, setCustomFields] = useState(
+    initialData?.customFields && initialData.customFields.length > 0
+      ? initialData.customFields
+      : [
+          {
+            id: "default-name",
+            name: "Student Name",
+            type: "value",
+            required: true,
+            options: [],
+          },
+          {
+            id: "default-batch",
+            name: "Batch",
+            type: "value",
+            required: true,
+            options: [],
+          },
+          {
+            id: "default-email",
+            name: "Email",
+            type: "value",
+            required: true,
+            options: [],
+          },
+        ]
+  );
 
   // Questions
   const [question, setQuestion] = useState("");
@@ -282,7 +308,29 @@ export default function CreateTestForm({ initialData = null, onSubmit, isSubmitt
     setTestNumber("");
     setDescription("");
     setInstructions("");
-    setCustomFields([]);
+    setCustomFields([
+      {
+        id: "default-name",
+        name: "Student Name",
+        type: "value",
+        required: true,
+        options: [],
+      },
+      {
+        id: "default-batch",
+        name: "Batch",
+        type: "value",
+        required: true,
+        options: [],
+      },
+      {
+        id: "default-email",
+        name: "Email",
+        type: "value",
+        required: true,
+        options: [],
+      },
+    ]);
     resetQuestionForm();
     setQuestions([]);
     setActiveSection("basic");
