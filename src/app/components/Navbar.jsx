@@ -103,7 +103,7 @@ export default function Navbar() {
               onClick={() => router.push("/user?form=trainee")}
               className="relative flex items-center gap-2 font-medium px-4 py-1.5 after:content-[''] after:absolute after:left-0 after:bottom-0 after:w-0 after:h-[2px] after:bg-blue-500 after:transition-all after:duration-300 hover:after:w-full hover:text-blue-500 active:scale-95"
             >
-              <span>👥</span> Add Trainee
+              <span>👥</span> Add Trainer
             </button>
           )}
           </>

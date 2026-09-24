@@ -178,10 +178,10 @@ export default function TraineeSection() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-                Trainee Management
+                Trainer Management
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                Create login credentials for new trainees and oversee active trainee accounts.
+                Create login credentials for new trainers and oversee active trainer accounts.
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function TraineeSection() {
         <div className="flex items-center gap-3 self-start md:self-auto">
           <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-sm text-blue-700 font-medium">
             <Shield className="w-4 h-4 text-blue-600" />
-            <span>Total Trainees: {trainees.length}</span>
+            <span>Total Trainers: {trainees.length}</span>
           </div>
           <button
             onClick={loadTrainees}
@@ -207,7 +207,7 @@ export default function TraineeSection() {
 
       {/* Main Grid: Add Form + Trainees List */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Create Trainee Card */}
+        {/* Left Column: Create Trainer Card */}
         <div className="lg:col-span-5">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6 sticky top-24">
             <div className="flex items-center gap-2.5 pb-4 border-b border-gray-100">
@@ -216,10 +216,10 @@ export default function TraineeSection() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Add New Trainee
+                  Add New Trainer
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Generate login email and password for a trainee
+                  Generate login email and password for a trainer
                 </p>
               </div>
             </div>
@@ -228,7 +228,7 @@ export default function TraineeSection() {
               {/* Email Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-                  Trainee Email Address <span className="text-rose-500">*</span>
+                  Trainer Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -237,7 +237,7 @@ export default function TraineeSection() {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. trainee@company.com"
+                    placeholder="e.g. trainer@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all"
@@ -342,7 +342,7 @@ export default function TraineeSection() {
                   htmlFor="sendResetEmail"
                   className="text-xs text-gray-600 cursor-pointer select-none font-medium"
                 >
-                  Send password reset email to trainee automatically
+                  Send password reset email to trainer automatically
                 </label>
               </div>
 
@@ -366,7 +366,7 @@ export default function TraineeSection() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>Generate Trainee Credentials</span>
+                    <span>Generate Trainer Credentials</span>
                   </>
                 )}
               </button>
@@ -382,7 +382,7 @@ export default function TraineeSection() {
                   </span>
                   <button
                     onClick={() => {
-                      const msg = `Welcome to the Platform!\nYour Trainee Account Details:\nEmail: ${lastCreated.email}\nInitial Password: ${lastCreated.password}\nLogin URL: ${window.location.origin}/login\n(A password reset link has also been sent to your email).`;
+                      const msg = `Welcome to the Platform!\nYour Trainer Account Details:\nEmail: ${lastCreated.email}\nInitial Password: ${lastCreated.password}\nLogin URL: ${window.location.origin}/login\n(A password reset link has also been sent to your email).`;
                       handleCopy(msg, "lastCreated");
                     }}
                     className="text-xs text-emerald-700 hover:text-emerald-900 font-medium flex items-center gap-1"
@@ -411,7 +411,7 @@ export default function TraineeSection() {
                   {lastCreated.resetEmailSent && (
                     <div className="pt-1 text-[11px] text-blue-700 flex items-center gap-1 font-sans">
                       <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>Password reset email dispatched to trainee inbox</span>
+                      <span>Password reset email dispatched to trainer inbox</span>
                     </div>
                   )}
                 </div>
@@ -420,16 +420,16 @@ export default function TraineeSection() {
           </div>
         </div>
 
-        {/* Right Column: Existing Trainees List */}
+        {/* Right Column: Existing Trainers List */}
         <div className="lg:col-span-7 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Registered Trainees
+                  Registered Trainers
                 </h2>
                 <p className="text-xs text-gray-500">
-                  All accounts with Trainee role
+                  All accounts with Trainer role
                 </p>
               </div>
 
@@ -438,7 +438,7 @@ export default function TraineeSection() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search trainee email..."
+                  placeholder="Search trainer email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-1.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
@@ -446,23 +446,23 @@ export default function TraineeSection() {
               </div>
             </div>
 
-            {/* Trainees List Container */}
+            {/* Trainers List Container */}
             <div className="mt-4 space-y-3">
               {loadingList ? (
                 <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
                   <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
-                  <p className="text-xs">Loading trainee accounts...</p>
+                  <p className="text-xs">Loading trainer accounts...</p>
                 </div>
               ) : filteredTrainees.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-xl p-8">
                   <Users className="w-10 h-10 mx-auto text-gray-300 mb-2" />
                   <p className="text-sm font-medium text-gray-600">
-                    {searchTerm ? "No trainees match your search" : "No Trainees Created Yet"}
+                    {searchTerm ? "No trainers match your search" : "No Trainers Created Yet"}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     {searchTerm
                       ? "Try searching with a different keyword."
-                      : "Use the form on the left to add your first trainee."}
+                      : "Use the form on the left to add your first trainer."}
                   </p>
                 </div>
               ) : (
@@ -492,7 +492,7 @@ export default function TraineeSection() {
                               {trainee.email}
                             </p>
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                              Trainee
+                              Trainer
                             </span>
                           </div>
                           <p className="text-xs text-gray-400 mt-0.5">
@@ -507,7 +507,7 @@ export default function TraineeSection() {
                           onClick={() => handleSendResetEmail(trainee.email, trainee.id)}
                           disabled={isSendingReset}
                           className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-1 text-xs font-medium"
-                          title="Send Password Reset Email to Trainee"
+                          title="Send Password Reset Email to Trainer"
                         >
                           {isSendingReset ? (
                             <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
