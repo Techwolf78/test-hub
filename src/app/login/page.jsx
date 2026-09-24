@@ -21,7 +21,7 @@ export default function LoginPage() {
   const getDestination = (role) => {
     if (role === "superadmin") return "/superadmin";
     if (role === "admin") return "/admin";
-    if (role === "user") return "/user";
+    if (role === "user" || role === "trainee") return "/user";
     return null;
   };
 
@@ -39,7 +39,7 @@ export default function LoginPage() {
           await signOut(auth);
           setError(
             snap.exists()
-              ? "Your user profile has no valid role. Ask an administrator to set the role to user, admin, or superadmin."
+              ? "Your user profile has no valid role. Ask an administrator to set the role to user, admin, superadmin, or trainee."
               : "No user profile was found for this account. Ask an administrator to create a users/{UID} Firestore document."
           );
         }
@@ -78,7 +78,7 @@ export default function LoginPage() {
           router.replace(destination);
         } else {
           await signOut(auth);
-          setError("Your user profile has no valid role. Ask an administrator to set the role to user, admin, or superadmin.");
+          setError("Your user profile has no valid role. Ask an administrator to set the role to user, admin, superadmin, or trainee.");
         }
       } else {
         await signOut(auth);
